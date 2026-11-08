@@ -1,0 +1,15 @@
+sessions/
+dist/
+.dev/
+node_modules/
+/config/
+/.vscode
+/diagnostics
+note
+.DS_Store
+.playwright-chromium-installed
+.stfolder/
+.env
+.env.*
+*.bak
+*.log
