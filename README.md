@@ -1,108 +1,71 @@
-# Microsoft Rewards Script
+# Microsoft Rewards Automation Tool (v5.0)
 
-[![Validate](https://github.com/TheNetsky/Microsoft-Rewards-Script/actions/workflows/validate.yml/badge.svg?branch=v5)](https://github.com/TheNetsky/Microsoft-Rewards-Script/actions/workflows/validate.yml)
-![Version](https://img.shields.io/github/package-json/v/TheNetsky/Microsoft-Rewards-Script/v5)
-[![Docker image (GHCR)](https://img.shields.io/badge/Docker-GHCR%20v5-2496ED?logo=docker&logoColor=white)](https://github.com/TheNetsky/Microsoft-Rewards-Script/pkgs/container/microsoft-rewards-script)
-![Node.js](https://img.shields.io/badge/node-%3E%3D24-green)
-[![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
-[![Donate](https://img.shields.io/badge/Donate-Ko--fi-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/thenetsky)
+Công cụ tự động cày điểm Microsoft Rewards phiên bản 5.0, hỗ trợ đa tài khoản, chạy mượt mà trên nền tảng Chromium chống phát hiện bot.
 
-Microsoft Rewards automation with API and browser modes, saved sessions,
-multiple accounts, localised searches and an optional Control API.
+---
 
-## Features
+## 🚀 Cách Cài Đặt & Sử Dụng (Dành Cho Người Mới)
 
-- Daily Set, promotions, punchcards and bonus-point claims.
-- Desktop/mobile searches, Explore on Bing, Daily Check-In and Read to Earn.
-- Optional Visual Search and background Edge browsing.
-- Streak progress, API-based streak protection and verified point reporting.
-- Scheduled runs, account selection, saved sessions and Discord/Telegram/ntfy notifications.
-- Control API with live events, persistent history, punchcard progress and activity balance observations.
+### Bước 1: Yêu cầu cài đặt trước
+- Cài đặt **Node.js** (phiên bản 24 trở lên): [Tải Node.js tại đây](https://nodejs.org/)
+- Cài đặt **Git**: [Tải Git tại đây](https://git-scm.com/)
 
-Activities depend on the account and region. This branch contains v5; earlier
-versions remain available on [v3](https://github.com/TheNetsky/Microsoft-Rewards-Script/tree/v3)
-and [v4](https://github.com/TheNetsky/Microsoft-Rewards-Script/tree/v4).
+---
 
-## Documentation
-
-- [Setup and usage](docs/usage.md) — local, Nix and Docker installation, accounts, settings, commands and troubleshooting.
-- [Control API](docs/control-api.md) — authentication, endpoints, run control, scheduling and dashboard data.
-
-## Setup
-
-Requires Node.js 24 or newer.
-
-```sh
-npm ci
-npm run install:browser
-npm run build
-cp env.example .env
-cp config.example.json config.json
+### Bước 2: Tải code về máy
+Mở Terminal hoặc Command Prompt (CMD) và chạy lệnh:
+```bash
+git clone https://github.com/vanhobmt99/bing_nodejs.git
+cd bing_nodejs
 ```
 
-On Linux, install Chromium's system libraries with
-`npx patchright install --with-deps chromium`.
-On Windows, copy the example files with File Explorer or PowerShell's `Copy-Item`.
+---
 
-Set `ACCOUNT_1_EMAIL` and the relevant sign-in settings in `.env`, then run:
+### Bước 3: Cấu hình tài khoản (.env)
+1. Tạo một file tên là `.env` ở ngay thư mục gốc của dự án (ngang hàng với file `package.json`).
+2. Điền thông tin các tài khoản cần chạy theo mẫu sau:
 
-```sh
+```env
+# Tài khoản 1
+ACCOUNT_1_EMAIL="email_1@outlook.com"
+ACCOUNT_1_PASSWORD="mat_khau_1"
+
+# Tài khoản 2
+ACCOUNT_2_EMAIL="email_2@outlook.com"
+ACCOUNT_2_PASSWORD="mat_khau_2"
+
+# Bạn có thể thêm tiếp ACCOUNT_3, ACCOUNT_4,... tuỳ ý
+```
+
+> **Lưu ý:** File `.env` chứa mật khẩu cá nhân của bạn, đã được hệ thống ẩn hoàn toàn trên Git, tuyệt đối an toàn và không bị lộ lên mạng.
+
+---
+
+### Bước 4: Chạy Tool (Chỉ 1 Click)
+
+👉 **Cách 1 (Dễ nhất - Khuyên dùng):**
+- Nhấp đúp chuột trực tiếp vào file **`run.bat`**.
+- File sẽ tự động kiểm tra, tự cài đặt thư viện, tự tải trình duyệt Chromium và tự chạy từ A đến Z!
+
+👉 **Cách 2 (Chạy thủ công bằng lệnh):**
+```bash
+npm install
+npm run install:browser
+npm run build
 npm start
 ```
 
-Add another numbered account block for each account. Passwords are optional for
-passwordless accounts. See [env.example](env.example) for account variables and
-[Setup and usage](docs/usage.md#accounts-and-sessions) for login options.
+---
 
-## Modes and settings
+## ⚙️ Các Tính Năng Nổi Bật
 
-Edit [config.json](config.example.json) before starting a run.
-
-| Setting                            | Purpose                                                        |
-| ---------------------------------- | -------------------------------------------------------------- |
-| `rewardsMode: "browser"`           | Complete web activities through rendered cards and GhostCursor |
-| `rewardsMode: "api"`               | Save the sign-in session, close its browser and use HTTP       |
-| `searchSettings.parallelSearching` | Overlap desktop and mobile work when enabled                   |
-| `workers`                          | Enable or disable individual tasks                             |
-| `taskDelay`                        | Delay between activities                                       |
-| `searchSettings.searchDelay`       | Delay between searches                                         |
-| `searchSettings.useAccountLocale`  | Select queries using the account country                       |
-| `ensureStreakProtection`           | Enable and verify protection over HTTP in both modes           |
-| `experimental`                     | Optional features; disabled by default                         |
-
-See the full [settings reference](docs/usage.md#settings-reference) for all options.
-
-## Sessions
-
-To sign in manually on a desktop with a visible browser:
-
-```sh
-npm run manual-login -- user@example.com --platform both
-npm run open-session -- --help
-```
-
-Sessions are saved under `sessionPath`. Keep `.env`, local configuration,
-session databases and diagnostics private.
-
-## Docker
-
-Create `.env` from `env.example`, then review the timezone and schedule in
-[compose.yaml](compose.yaml).
-
-```sh
-docker compose up -d --build
-docker compose logs -f
-```
-
-The published v5 image is `ghcr.io/thenetsky/microsoft-rewards-script:5`.
-To use it instead of building locally, follow the [Docker image instructions](docs/usage.md#docker).
-
-Docker persists configuration in `./config`, sessions in `./sessions` and optional
-error captures in `./diagnostics`. It creates `config/config.json` from defaults
-when needed. `RUN_ON_START` controls the first run; `CRON_SCHEDULE` sets the initial
-schedule. Control API schedule changes persist in `config/schedule.json`.
-See [Control API Docker setup](docs/control-api.md#docker) to enable the server.
-
-## License
-
-[GPL-3.0-or-later](LICENSE).
+- **Tìm kiếm thông minh:** Tìm kiếm PC và Mobile với độ trễ ngẫu nhiên (12–30s), có cuộn trang và click link tin tức giả lập người thật để tối đa điểm **Bing Star Bonus (2,100 điểm)**.
+- **Tự động làm nhiệm vụ:**
+  - Daily Set, More Promotions, Keep Earning.
+  - Tự động ăn các nhiệm vụ tuần (Exclusive Weekly Quests - Novw1, Novw2...).
+  - Tự động duy trì chuỗi bảo vệ điểm (Streak Protection).
+  - Tự động nhận thưởng khi hoàn thành (Auto Claim).
+- **Cơ chế chống bot tiên tiến:**
+  - Sử dụng trình duyệt ngầm Patchright chống phát hiện tự động hóa.
+  - Tự động chia sẻ Cookie SSO giữa phiên Desktop và Mobile, hạn chế tối đa việc bị hỏi mã xác minh OTP.
+- **Tiết kiệm thời gian:** Tự động phát hiện khi tài khoản đã đủ hạn ngạch tìm kiếm để dừng ngay lập tức, không spam tốn tài nguyên máy.
