@@ -10,6 +10,7 @@ note
 .playwright-chromium-installed
 .stfolder/
 .env
+.env*
 .env.*
 *.bak
 *.log
