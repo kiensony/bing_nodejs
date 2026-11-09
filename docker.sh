@@ -69,3 +69,4 @@ echo "  - Xem log truc tiep:     docker compose logs -f"
 echo "  - Dung container:        docker compose down"
 echo "  - Khoi dong lai:         docker compose restart"
 echo "========================================================"
+
