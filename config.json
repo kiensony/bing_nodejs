@@ -7,7 +7,7 @@
     "ensureStreakProtection": true,
     "autoClaimPunchcardRewards": true,
     "continueOnBotWarning": true,
-    "skipNonPointTasks": false,
+    "skipNonPointTasks": true,
     "accountDelay": {
         "min": "30sec",
         "max": "1min"
