@@ -112,6 +112,16 @@ export class LoginStateDetector {
             return 'ACCOUNT_LOCKED'
         }
 
+        const pathname = url.pathname.toLowerCase()
+        const isBingAuthRedirect =
+            (hostname === 'bing.com' || hostname.endsWith('.bing.com')) &&
+            (pathname.startsWith('/auth/login') ||
+                pathname.startsWith('/signin') ||
+                pathname.startsWith('/fd/auth/signin'))
+        if (isBingAuthRedirect) {
+            return 'PAGE_TRANSITION'
+        }
+
         if (hostname === 'bing.com' || hostname.endsWith('.bing.com') || hostname === 'account.microsoft.com') {
             return 'LOGGED_IN'
         }

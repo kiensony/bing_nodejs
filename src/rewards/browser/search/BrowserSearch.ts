@@ -65,7 +65,7 @@ export class BrowserSearch extends BaseActivity {
                 stats.stagnant,
                 tracker.stagnantLimit
             )
-            if (boundedCompleted) {
+            if (boundedCompleted && (stats.totalGained ?? 0) > 0) {
                 const email = this.bot.currentAccountEmail
                 if (email) {
                     const localDate = this.bot.utils.formatDate(Date.now(), this.bot.userData.timezone)

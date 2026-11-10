@@ -15,6 +15,7 @@ export async function getBingSignInEvidence(page: Page, timeout: number): Promis
             profileSelector => {
                 const host = location.hostname.toLowerCase()
                 if ((host !== 'bing.com' && !host.endsWith('.bing.com')) || host === 'rewards.bing.com') return false
+                if (location.pathname.toLowerCase().startsWith('/fd/auth/signin')) return false
                 const model = (
                     window as Window & {
                         _model?: { UserType?: unknown; UserEmail?: unknown; EnforceNotSignedIn?: unknown }
@@ -29,6 +30,8 @@ export async function getBingSignInEvidence(page: Page, timeout: number): Promis
                         ? 'page-model'
                         : false
                 }
+                const avatar = document.querySelector<HTMLImageElement>('#id_p')
+                if (avatar?.getAttribute('src')?.trim()) return 'profile-avatar'
                 const profile = document.querySelector(profileSelector)
                 const name = profile?.textContent?.trim()
                 if (!name || /^(?:sign|log)\s*in$/i.test(name)) return false
@@ -151,14 +154,18 @@ export class LoginSession {
                 let u = new URL(page.url())
                 let hostname = u.hostname.toLowerCase()
                 let atBingPage =
-                    (hostname === 'bing.com' || hostname.endsWith('.bing.com')) && hostname !== 'rewards.bing.com'
+                    (hostname === 'bing.com' || hostname.endsWith('.bing.com')) &&
+                    hostname !== 'rewards.bing.com' &&
+                    !u.pathname.toLowerCase().startsWith('/fd/auth/signin')
                 if (!atBingPage) {
                     await this.transition(page, account)
 
                     u = new URL(page.url())
                     hostname = u.hostname.toLowerCase()
                     atBingPage =
-                        (hostname === 'bing.com' || hostname.endsWith('.bing.com')) && hostname !== 'rewards.bing.com'
+                        (hostname === 'bing.com' || hostname.endsWith('.bing.com')) &&
+                        hostname !== 'rewards.bing.com' &&
+                        !u.pathname.toLowerCase().startsWith('/fd/auth/signin')
                 }
 
                 this.bot.logger.debug(
@@ -170,7 +177,16 @@ export class LoginSession {
                 if (atBingPage) {
                     await this.bot.browser.utils.dismissMessages(page).catch(() => undefined)
 
-                    const evidence = await getBingSignInEvidence(page, browserTimeout(this.bot, 'optional'))
+                    let evidence = await getBingSignInEvidence(page, browserTimeout(this.bot, 'optional'))
+                    if (!evidence) {
+                        const bingCookies = await page
+                            .context()
+                            .cookies(URLs.bing.origin)
+                            .catch(() => [])
+                        if (bingCookies.some(cookie => cookie.name === '_U' && Boolean(cookie.value.trim()))) {
+                            evidence = 'bing-auth-cookie'
+                        }
+                    }
 
                     this.bot.logger.debug(
                         this.bot.isMobile,

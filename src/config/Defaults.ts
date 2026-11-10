@@ -35,7 +35,7 @@ export const defaultConfig: Config = {
         runOnZeroPoints: false,
         maxBonusSearches: 110,
         maxSearchOnBingAttempts: 3,
-        parallelSearching: true,
+        parallelSearching: false,
         clusterSearch: true,
         useAccountLocale: true,
         queryEngines: ['google', 'local', 'wikipedia', 'rss.googleNews'],

@@ -42,7 +42,7 @@
         "clickRandomResults": true,
         "runOnZeroPoints": false,
         "maxBonusSearches": 110,
-        "parallelSearching": true,
+        "parallelSearching": false,
         "clusterSearch": true,
         "useAccountLocale": true,
         "queryEngines": [
