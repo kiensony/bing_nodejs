@@ -1,12 +1,24 @@
-# Account Monitoring
+# Grafana Setup And Account Monitoring
 
 The monitoring stack runs Prometheus and Grafana alongside the Control API. The provisioned **Microsoft Rewards Accounts** dashboard includes an account filter, health and status, observed balances, verified points, activity attribution, remaining quotas, streaks and time since the last completed run.
 
-## Search Views
+## Choose A Setup
 
-Select an **Account** and **Search device** (`mobile`, `desktop` or All) to compare regular search points. The search table lists each account/device pair with its latest activity status, verified points and available search points at the start of the run. The account and device charts show the same selected results grouped for comparison, followed by a history chart. These views work in local Grafana and Grafana Cloud; re-run `npm run monitoring:cloud:dashboard` to update an existing Cloud dashboard.
+| Setup                                              | Where to view the dashboard                         | Services added          |
+| -------------------------------------------------- | --------------------------------------------------- | ----------------------- |
+| [Local Grafana](#start-with-docker)                | `http://127.0.0.1:3000/d/rewards-accounts`          | Prometheus and Grafana  |
+| [Grafana Cloud](#grafana-cloud)                    | `https://your-stack.grafana.net/d/rewards-accounts` | Grafana Alloy           |
+| [Existing Grafana](#existing-grafana-installation) | Your existing Grafana URL                           | Your Prometheus scraper |
 
-Search points use the current run's device summary when available and otherwise verified regular-search activity results. While a device has no verified result, its points remain Unknown. A known zero is shown as zero. During a new run, earlier search results are not reused for an account already active in that run. Bonus searches and experimental API reports are excluded from regular mobile/desktop search totals and remain visible in activity attribution. Available points are the initial quota observation, not a live remaining quota or search count.
+See [Login And Password Recovery](#login-and-password-recovery), [Search Views](#search-views), and [Troubleshooting](#troubleshooting) after setup.
+
+## Prerequisites
+
+Run commands from the repository root. Docker deployments need Docker Engine and the Docker Compose plugin (`docker compose version`). The Cloud dashboard installer also needs Node.js 24 or newer and project dependencies installed with `npm ci --include=dev --ignore-scripts`.
+
+Create `.env` using [env.example](../env.example) if it does not already exist. Keep an existing `.env` and add the required settings to it. Configure at least `ACCOUNT_1_EMAIL`, plus the account's required authentication/session settings. Complete account setup using the [project guide](../README.md) before running rewards jobs. Keep actual passwords and tokens in the ignored environment file.
+
+The Compose examples below read `.env`. A file such as `.env.monitoring.local` is not loaded automatically. Shell environment values take precedence over `.env` for Compose substitution and the Cloud installer.
 
 ## Start With Docker
 
@@ -15,8 +27,8 @@ Configure accounts in `.env` using [env.example](../env.example), then add:
 ```dotenv
 API_TOKEN=replace-with-a-generated-token
 GRAFANA_ADMIN_PASSWORD=replace-with-a-strong-password
-# GRAFANA_ADMIN_USER=admin
-# GRAFANA_PORT=3000
+GRAFANA_ADMIN_USER=admin
+GRAFANA_PORT=3000
 ```
 
 Generate a token with:
@@ -25,17 +37,58 @@ Generate a token with:
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-Start the application and monitoring services from the repository root:
+The base [compose.yaml](../compose.yaml) has `RUN_ON_START: 'true'` and a daily schedule. Set `RUN_ON_START: 'false'` in that service before starting if you do not want an immediate rewards run. The monitoring override preserves those service settings.
+
+Validate configuration, then start the application and monitoring services:
 
 ```bash
+docker compose -f compose.yaml -f compose.monitoring.yaml config --quiet
 docker compose -f compose.yaml -f compose.monitoring.yaml up -d --build
+docker compose -f compose.yaml -f compose.monitoring.yaml ps
 ```
 
 Open [Grafana](http://127.0.0.1:3000/d/rewards-accounts) and sign in with `admin` (or `GRAFANA_ADMIN_USER`) and `GRAFANA_ADMIN_PASSWORD`. The data source and dashboard are provisioned automatically. Grafana is bound to host loopback; Prometheus is accessible inside the Compose network. The monitoring override enables the Control API on internal port 3010 and preserves the application's existing schedule and startup-run settings.
 
 Grafana's administrator password is initialized on its first start. Changing `.env` does not reset a password already stored in its persistent volume. Set `GRAFANA_PORT` to a free port if 3000 is occupied.
 
+Select **Rewards Prometheus** as the data source and **local** as the deployment. Allow up to a minute for the first samples. Accounts appear before a rewards run, while balances and search results remain Unknown until observed. See [Search Views](#search-views) for account/device filters.
+
 Prometheus scrapes every 30 seconds and retains samples for 30 days. Named Docker volumes retain both monitoring databases across container recreation. Avoid `docker compose down -v` when retaining monitoring data.
+
+### Access From Another Computer
+
+Grafana listens on the Docker host's loopback address. From your own computer, forward the port over SSH:
+
+```bash
+ssh -N -L 3300:127.0.0.1:3000 ubuntu@your-server
+```
+
+Open `http://127.0.0.1:3300/d/rewards-accounts` on your computer. If the server uses `GRAFANA_PORT=3300`, change the tunnel destination to `3300:127.0.0.1:3300`. Use a free local port if 3300 is already occupied.
+
+## Login And Password Recovery
+
+| Credential                                                            | Purpose                                                             |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `GRAFANA_ADMIN_USER` and `GRAFANA_ADMIN_PASSWORD`                     | Local Grafana browser login; default username is `admin`.           |
+| `API_TOKEN`                                                           | Authentication for Control API requests and metric scraping.        |
+| Your Grafana.com account or organization SSO                          | Grafana Cloud browser login.                                        |
+| `GRAFANA_CLOUD_PROMETHEUS_USERNAME` and `GRAFANA_CLOUD_METRICS_TOKEN` | Alloy remote writes to Grafana Cloud.                               |
+| `GRAFANA_CLOUD_SERVICE_ACCOUNT_TOKEN`                                 | Installing or updating the Cloud dashboard through the Grafana API. |
+
+For local Grafana, use the username and password configured when that instance was first initialized. A later browser password change overrides the original environment setting. Restarting or recreating the container keeps that stored password. Confirm you are opening the port selected by `GRAFANA_PORT`; the local preview used during development may instead run on port 3300 with credentials in `.env.monitoring.local`.
+
+To recover the administrator password for the Compose-managed local Grafana, run this Bash snippet on the Docker host. It prompts without echoing and sends the new password to Grafana through stdin:
+
+```bash
+read -r -s -p 'New Grafana admin password: ' grafana_reset_password
+printf '\n'
+printf '%s\n' "$grafana_reset_password" | docker compose -f compose.yaml -f compose.monitoring.yaml exec -T grafana \
+    grafana cli --homepath /usr/share/grafana --config /etc/grafana/grafana.ini \
+    admin reset-admin-password --password-from-stdin
+unset grafana_reset_password
+```
+
+The command resets the default administrator (user ID 1), preserves dashboards and data, and leaves the username unchanged. Update `GRAFANA_ADMIN_PASSWORD` in `.env` to match afterward. For a separately started preview container, use `docker exec -i rewards-grafana-preview` in place of `docker compose -f compose.yaml -f compose.monitoring.yaml exec -T grafana`. Use your Grafana.com or SSO recovery flow for Cloud access.
 
 ## Grafana Cloud
 
@@ -54,7 +107,9 @@ GRAFANA_CLOUD_DEPLOYMENT=rewards
 Use the actual URL and username shown by your stack. `API_TOKEN` protects local scraping; `GRAFANA_CLOUD_METRICS_TOKEN` authenticates remote writes. Alloy receives these monitoring settings only, and keeps its remote-write queue in a persistent Docker volume. Its HTTP port is not published.
 
 ```bash
+docker compose -f compose.yaml -f compose.grafana-cloud.yaml config --quiet
 docker compose -f compose.yaml -f compose.grafana-cloud.yaml up -d --build
+docker compose -f compose.yaml -f compose.grafana-cloud.yaml ps
 ```
 
 This Cloud configuration is an alternative to the local monitoring override. To use both, include both overrides in the same Compose command. Assign a unique `GRAFANA_CLOUD_DEPLOYMENT` value to each server sending to the same Cloud stack. The dashboard selects one deployment at a time to keep each server's account records separate. Cloud metrics include account email labels, balances and activity information.
@@ -72,6 +127,7 @@ GRAFANA_CLOUD_PROMETHEUS_DATASOURCE_UID=grafanacloud-your-stack-prom
 Run from the repository root:
 
 ```bash
+npm ci --include=dev --ignore-scripts
 npm run monitoring:cloud:dashboard
 ```
 
@@ -84,6 +140,39 @@ npm run monitoring:cloud:dashboard -- --dry-run
 ```
 
 Alternatively, import [accounts.json](../monitoring/grafana/dashboards/accounts.json) manually in Grafana Cloud, then select your Cloud Prometheus **Data source** and **Deployment**. Allow a minute for initial samples, and run rewards jobs through the Control API to populate account observations. Query `up{job="microsoft-rewards",deployment="rewards"}` to confirm scraping. `0` indicates an API scrape failure; an absent series may indicate Alloy or Cloud remote-write configuration issues.
+
+## Search Views
+
+Select an **Account** and **Search device** (`mobile`, `desktop` or All) to compare regular search points. The search table lists each account/device pair with its latest activity status, verified points and available search points at the start of the run. The account and device charts show the same selected results grouped for comparison, followed by a history chart. These views work in local Grafana and Grafana Cloud; re-run `npm run monitoring:cloud:dashboard` to update an existing Cloud dashboard.
+
+Search points use the current run's device summary when available and otherwise verified regular-search activity results. While a device has no verified result, its points remain Unknown. A known zero is shown as zero. During a new run, earlier search results are not reused for an account already active in that run. Bonus searches and experimental API reports are excluded from regular mobile/desktop search totals and remain visible in activity attribution. Available points are the initial quota observation, not a live remaining quota or search count.
+
+## Troubleshooting
+
+| Symptom                                                 | What to check                                                                                                                                                                  |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Invalid username or password                            | Use the correct instance/port and local or Cloud credentials from the table above. Recover the stored local password if needed; editing `.env` alone will not change it.       |
+| Port is already allocated                               | Set an unused `GRAFANA_PORT` in `.env`, re-run the same Compose startup command, and open that port.                                                                           |
+| `up` is `0`                                             | The scraper cannot reach or authenticate with the API. Check the application health and matching `API_TOKEN`.                                                                  |
+| `up` is absent                                          | Check the selected data source/deployment and whether Prometheus or Alloy is running. For Cloud, check the remote-write URL, username, token scope, and outbound HTTPS access. |
+| Accounts exist but points are Unknown                   | Run rewards work through the Control API. Metrics need verified observations; jobs launched directly outside the API are not tracked.                                          |
+| Cloud dashboard installation returns 401 or 403         | Check `GRAFANA_CLOUD_SERVICE_ACCOUNT_TOKEN` and its dashboard/data-source permissions. The metrics-write token cannot install dashboards.                                      |
+| Cloud dashboard installation reports a missing variable | Add the required Cloud settings to the repository-root `.env`. Check for stale shell values overriding them.                                                                   |
+
+For local setup, inspect service health and recent logs:
+
+```bash
+docker compose -f compose.yaml -f compose.monitoring.yaml ps
+docker compose -f compose.yaml -f compose.monitoring.yaml logs --tail=100 grafana prometheus microsoft-rewards-script
+```
+
+For Cloud setup, inspect Alloy and API logs:
+
+```bash
+docker compose -f compose.yaml -f compose.grafana-cloud.yaml logs --tail=100 alloy microsoft-rewards-script
+```
+
+In Grafana **Explore**, select the relevant Prometheus data source and query `up{job="microsoft-rewards",deployment="local"}` for local setup, or replace `local` with `GRAFANA_CLOUD_DEPLOYMENT` for Cloud. A value of `1` confirms successful scraping. After adding panels or updating dashboard JSON, local provisioning reloads it within about 30 seconds; re-run `npm run monitoring:cloud:dashboard` for Cloud.
 
 ## Metrics
 
