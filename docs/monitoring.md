@@ -94,17 +94,48 @@ The command resets the default administrator (user ID 1), preserves dashboards a
 
 Use Grafana Alloy to scrape the local Control API and send metrics to Grafana Cloud over HTTPS. This setup runs the application and Alloy; a local Grafana or Prometheus server is not required. No inbound API port is published.
 
-In your Grafana Cloud stack, open **Connections > Add new connection > Hosted Prometheus** and copy its remote-write URL and username. Create a Cloud Access Policy token with `metrics:write` scope for that stack. Add these settings to `.env` alongside your account settings:
+### 1. Get Metrics Credentials
+
+Sign in to [Grafana Cloud](https://grafana.com/) and create or open your stack. In the stack, open **Connections > Add new connection > Hosted Prometheus** and copy the Prometheus remote-write URL and username. Create a Cloud Access Policy token with `metrics:write` scope for that stack.
+
+These values become `GRAFANA_CLOUD_PROMETHEUS_URL`, `GRAFANA_CLOUD_PROMETHEUS_USERNAME` and `GRAFANA_CLOUD_METRICS_TOKEN` in the next steps. Use the actual URL and username shown by your stack.
+
+### 2. Get Dashboard Credentials
+
+In your stack's **Administration > Users and access > Service accounts**, create a service account with the **Editor** role, or equivalent permission to read the selected data source and create/update dashboards. Generate a service account token for `GRAFANA_CLOUD_SERVICE_ACCOUNT_TOKEN`.
+
+Open **Connections > Data sources**, select your Cloud Prometheus data source and copy its UID for `GRAFANA_CLOUD_PROMETHEUS_DATASOURCE_UID`. The UID identifies the data source, and may look like `grafanacloud-your-stack-prom`. Use your stack's HTTPS browser URL for `GRAFANA_CLOUD_URL`.
+
+The service account token installs the dashboard; the Cloud Access Policy token from step 1 sends metrics. Keep both values in their corresponding settings.
+
+### 3. Configure The Environment
+
+Create `.env` from [env.example](../env.example) if needed, or edit the existing repository-root `.env`. Keep your `ACCOUNT_N_*` settings and add this complete Cloud configuration:
 
 ```dotenv
 API_TOKEN=replace-with-a-generated-local-api-token
+
 GRAFANA_CLOUD_PROMETHEUS_URL=https://prometheus-prod-REGION.grafana.net/api/prom/push
 GRAFANA_CLOUD_PROMETHEUS_USERNAME=123456
 GRAFANA_CLOUD_METRICS_TOKEN=replace-with-a-metrics-write-token
 GRAFANA_CLOUD_DEPLOYMENT=rewards
+
+GRAFANA_CLOUD_URL=https://your-stack.grafana.net
+GRAFANA_CLOUD_SERVICE_ACCOUNT_TOKEN=replace-with-a-grafana-service-account-token
+GRAFANA_CLOUD_PROMETHEUS_DATASOURCE_UID=grafanacloud-your-stack-prom
 ```
 
-Use the actual URL and username shown by your stack. `API_TOKEN` protects local scraping; `GRAFANA_CLOUD_METRICS_TOKEN` authenticates remote writes. Alloy receives these monitoring settings only, and keeps its remote-write queue in a persistent Docker volume. Its HTTP port is not published.
+Replace the example values with your stack's settings. Generate a new `API_TOKEN` with the following command if you do not already have one:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+`API_TOKEN` protects local scraping; `GRAFANA_CLOUD_METRICS_TOKEN` authenticates remote writes. Assign a unique `GRAFANA_CLOUD_DEPLOYMENT` value to each server sending to the same Cloud stack. The dashboard selects one deployment at a time to keep each server's account records separate. Cloud metrics include account email labels, balances and activity information.
+
+### 4. Start The Application And Alloy
+
+Run from the repository root. The base [compose.yaml](../compose.yaml) has `RUN_ON_START: 'true'` and a daily schedule. Set `RUN_ON_START: 'false'` in that service before starting if you do not want an immediate rewards run; scheduled runs remain enabled.
 
 ```bash
 docker compose -f compose.yaml -f compose.grafana-cloud.yaml config --quiet
@@ -112,19 +143,11 @@ docker compose -f compose.yaml -f compose.grafana-cloud.yaml up -d --build
 docker compose -f compose.yaml -f compose.grafana-cloud.yaml ps
 ```
 
-This Cloud configuration is an alternative to the local monitoring override. To use both, include both overrides in the same Compose command. Assign a unique `GRAFANA_CLOUD_DEPLOYMENT` value to each server sending to the same Cloud stack. The dashboard selects one deployment at a time to keep each server's account records separate. Cloud metrics include account email labels, balances and activity information.
+Alloy receives these monitoring settings only, and keeps its remote-write queue in a persistent Docker volume. Its HTTP port is not published. To run local monitoring and Cloud together, include both `compose.monitoring.yaml` and `compose.grafana-cloud.yaml` in the same Compose command and also configure the local Grafana variables.
 
-### Install The Cloud Dashboard
+### 5. Install The Cloud Dashboard
 
-Create a **Grafana service account token** with the Editor role, or equivalent permission to read the selected data source and create/update dashboards. This token is separate from the Cloud Access Policy token used for remote writes. Find the UID of your Cloud Prometheus data source in **Connections > Data sources**, then add:
-
-```dotenv
-GRAFANA_CLOUD_URL=https://your-stack.grafana.net
-GRAFANA_CLOUD_SERVICE_ACCOUNT_TOKEN=replace-with-a-grafana-service-account-token
-GRAFANA_CLOUD_PROMETHEUS_DATASOURCE_UID=grafanacloud-your-stack-prom
-```
-
-Run from the repository root:
+Using Node.js 24 or newer, run from the repository root:
 
 ```bash
 npm ci --include=dev --ignore-scripts
@@ -139,7 +162,19 @@ Preview the dashboard payload without contacting Cloud:
 npm run monitoring:cloud:dashboard -- --dry-run
 ```
 
-Alternatively, import [accounts.json](../monitoring/grafana/dashboards/accounts.json) manually in Grafana Cloud, then select your Cloud Prometheus **Data source** and **Deployment**. Allow a minute for initial samples, and run rewards jobs through the Control API to populate account observations. Query `up{job="microsoft-rewards",deployment="rewards"}` to confirm scraping. `0` indicates an API scrape failure; an absent series may indicate Alloy or Cloud remote-write configuration issues.
+Alternatively, import [accounts.json](../monitoring/grafana/dashboards/accounts.json) manually in Grafana Cloud.
+
+### 6. Open And Verify The Dashboard
+
+Open the URL printed by the installer, such as `https://your-stack.grafana.net/d/rewards-accounts`. Sign in with your **Grafana.com account or organization SSO**. Local `GRAFANA_ADMIN_USER` and `GRAFANA_ADMIN_PASSWORD` settings apply to local Grafana; use your Cloud login for this stack.
+
+Select your Cloud Prometheus **Data source**, **Deployment** (`rewards` unless changed), **Account**, and **Search device**. Allow about a minute for initial samples. In **Explore**, select the same data source and run:
+
+```promql
+up{job="microsoft-rewards",deployment="rewards"}
+```
+
+Replace `rewards` with your `GRAFANA_CLOUD_DEPLOYMENT` value if different. A value of `1` confirms successful scraping and delivery to Cloud. `0` indicates an API scrape failure; an absent series may indicate Alloy or Cloud remote-write configuration issues. Balances and search results populate as rewards jobs run through the Control API. See [Troubleshooting](#troubleshooting) for logs and common errors.
 
 ## Search Views
 
