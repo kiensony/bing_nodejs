@@ -54,10 +54,10 @@
             "rss.googleNews",
             "local"
         ],
-        "searchResultVisitTime": "12sec",
+        "searchResultVisitTime": "10sec",
         "searchDelay": {
-            "min": "18sec",
-            "max": "45sec"
+            "min": "12sec",
+            "max": "25sec"
         },
         "readDelay": {
             "min": "20s",

@@ -254,8 +254,8 @@ export class BrowserSearch extends BaseActivity {
                     stats.stagnant >= tracker.stagnantLimit
 
                 if (!stopAfterMeasure && stats.performed >= nextBurstPauseAt) {
-                    const burstPauseMs = this.bot.utils.randomNumber(45000, 105000)
-                    nextBurstPauseAt = stats.performed + this.bot.utils.randomNumber(3, 6)
+                    const burstPauseMs = this.bot.utils.randomNumber(25000, 55000)
+                    nextBurstPauseAt = stats.performed + this.bot.utils.randomNumber(4, 7)
                     this.bot.logger.info(
                         isMobile,
                         tracker.context,

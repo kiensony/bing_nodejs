@@ -39,8 +39,8 @@ export const defaultConfig: Config = {
         clusterSearch: false,
         useAccountLocale: true,
         queryEngines: ['google', 'wikipedia', 'wikirandom', 'reddit', 'hackernews', 'rss.googleNews', 'local'],
-        searchResultVisitTime: '12sec',
-        searchDelay: { min: '18sec', max: '45sec' },
+        searchResultVisitTime: '10sec',
+        searchDelay: { min: '12sec', max: '25sec' },
         readDelay: { min: '20s', max: '30sec' }
     },
     experimental: { blockMedia: false, edgeBrowsing: true, browserSearchApiReport: false },
