@@ -117,15 +117,32 @@ class BrowserManager {
             let restoredStorageState =
                 !fresh && session?.storageState && reuseFingerprint ? session.storageState : null
 
-            if (!restoredStorageState && !fresh && this.bot.isMobile && this.bot.cookies.desktop.length > 0) {
-                const seededState = createSessionState(this.bot.cookies.desktop)
-                if (seededState.cookies.length > 0) {
-                    restoredStorageState = seededState
-                    this.bot.logger.info(
-                        this.bot.isMobile,
-                        'SESSION',
-                        `Seeding mobile session from authenticated desktop cookies | cookies=${seededState.cookies.length}`
-                    )
+            if (!fresh && this.bot.isMobile) {
+                const liveDesktopCookies =
+                    this.bot.mainDesktopPage && !this.bot.mainDesktopPage.isClosed()
+                        ? await this.bot.mainDesktopPage
+                              .context()
+                              .cookies()
+                              .catch(() => [])
+                        : []
+                const desktopCookies = liveDesktopCookies.length > 0 ? liveDesktopCookies : this.bot.cookies.desktop
+                if (desktopCookies.length > 0) {
+                    const mergedByKey = new Map<string, (typeof desktopCookies)[number]>()
+                    for (const cookie of restoredStorageState?.cookies ?? []) {
+                        mergedByKey.set(`${cookie.domain}|${cookie.path}|${cookie.name}`, cookie)
+                    }
+                    for (const cookie of desktopCookies) {
+                        mergedByKey.set(`${cookie.domain}|${cookie.path}|${cookie.name}`, cookie)
+                    }
+                    const seededState = createSessionState([...mergedByKey.values()])
+                    if (seededState.cookies.length > 0) {
+                        restoredStorageState = seededState
+                        this.bot.logger.info(
+                            this.bot.isMobile,
+                            'SESSION',
+                            `Seeding mobile session from authenticated desktop cookies | cookies=${seededState.cookies.length}`
+                        )
+                    }
                 }
             }
 

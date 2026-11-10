@@ -9,12 +9,12 @@
     "continueOnBotWarning": true,
     "skipNonPointTasks": true,
     "accountDelay": {
-        "min": "30sec",
-        "max": "1min"
+        "min": "1min",
+        "max": "2min"
     },
     "taskDelay": {
-        "min": "12sec",
-        "max": "20sec"
+        "min": "15sec",
+        "max": "28sec"
     },
     "workers": {
         "doDailySet": true,
@@ -35,26 +35,29 @@
         "searchOnBing": true
     },
     "searchOnBingLocalQueries": false,
-    "globalTimeout": "30sec",
+    "globalTimeout": "45sec",
     "searchSettings": {
         "maxSearchOnBingAttempts": 3,
         "scrollRandomResults": true,
         "clickRandomResults": true,
         "runOnZeroPoints": false,
-        "maxBonusSearches": 110,
-        "parallelSearching": true,
-        "clusterSearch": true,
+        "maxBonusSearches": 35,
+        "parallelSearching": false,
+        "clusterSearch": false,
         "useAccountLocale": true,
         "queryEngines": [
             "google",
-            "local",
             "wikipedia",
-            "rss.googleNews"
+            "wikirandom",
+            "reddit",
+            "hackernews",
+            "rss.googleNews",
+            "local"
         ],
-        "searchResultVisitTime": "12sec",
+        "searchResultVisitTime": "10sec",
         "searchDelay": {
             "min": "12sec",
-            "max": "30sec"
+            "max": "25sec"
         },
         "readDelay": {
             "min": "20s",

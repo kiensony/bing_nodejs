@@ -2,8 +2,14 @@ import { ghostClick } from '../../../browser/GhostClick'
 import type { Locator, Page } from 'patchright'
 import { URLs } from '../../../constants/urls'
 
-const KEY_DELAY_MS = 70
-const PRE_FOCUS_PAUSE_MS = 600
+const MIN_KEY_DELAY_MS = 45
+const MAX_KEY_DELAY_MS = 115
+const MIN_PRE_FOCUS_PAUSE_MS = 350
+const MAX_PRE_FOCUS_PAUSE_MS = 1100
+
+function randomInt(min: number, max: number): number {
+    return Math.floor(Math.random() * (max - min + 1)) + min
+}
 
 export function bingSearchBox(page: Page): Locator {
     return page.locator('#sb_form_q:visible:not([disabled]):not([readonly])').first()
@@ -15,7 +21,7 @@ export async function humanType(page: Page, query: string, timeout = 30000, sign
     await searchBox.waitFor({ state: 'visible', timeout })
     await ghostClick(page, searchBox, timeout, signal)
     await searchBox.fill('', { timeout })
-    await searchBox.pressSequentially(query, { delay: KEY_DELAY_MS, timeout })
+    await searchBox.pressSequentially(query, { delay: randomInt(MIN_KEY_DELAY_MS, MAX_KEY_DELAY_MS), timeout })
     return searchBox
 }
 
@@ -54,5 +60,5 @@ export async function submitSearch(
 }
 
 export function humanPreFocusPauseMs(): number {
-    return PRE_FOCUS_PAUSE_MS
+    return randomInt(MIN_PRE_FOCUS_PAUSE_MS, MAX_PRE_FOCUS_PAUSE_MS)
 }
