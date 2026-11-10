@@ -182,6 +182,36 @@ Select an **Account** and **Search device** (`mobile`, `desktop` or All) to comp
 
 Search points use the current run's device summary when available and otherwise verified regular-search activity results. While a device has no verified result, its points remain Unknown. A known zero is shown as zero. During a new run, earlier search results are not reused for an account already active in that run. Bonus searches and experimental API reports are excluded from regular mobile/desktop search totals and remain visible in activity attribution. Available points are the initial quota observation, not a live remaining quota or search count.
 
+## Search Diagnostic Logs
+
+The **Rewards Search Diagnostics** dashboard (`/d/rewards-search-diagnostics`) shows Bing sign-in checks and their evidence source, quota reads, successful query submissions, failed submission attempts, points per measured batch, balances, and session outcomes. Filter by deployment, account email regex, device, and stage. Expand a log entry to inspect its fields and `runId`. Counts reflect diagnostic events in the selected time range, rather than unique accounts or runs. A final zero-point measurement is excluded from the zero-credit batch count.
+
+Diagnostics are emitted with debug logging disabled. Runs launched through the Control API save these events to `diagnostics/search/events.jsonl`; the file rotates at 5 MiB and keeps three archives (about 20 MiB total). Alloy tails the current file and forwards it to Loki. Log write failures produce a warning and do not stop Rewards work. The local Loki store retains logs for 30 days; local file retention bounds recovery if the collector is offline. Only the allowlisted diagnostic fields are written: no cookies, tokens, passwords, raw URLs, or query text. Account emails and run IDs remain searchable JSON fields, rather than indexed Loki labels. Keep the diagnostics directory private; the bundled Alloy collector runs as root to read the private file.
+
+The local monitoring Compose stack includes Loki and the log collector. After updating and rebuilding the application, run the normal local Compose startup command from this guide to apply them. Loki has no published host port; Grafana queries it over the Compose network. The dashboard starts receiving events with the next API-managed Rewards run. Earlier runs cannot be reconstructed from metrics.
+
+For Grafana Cloud, obtain the hosted Loki push URL, username, and a token with `logs:write` scope from your Cloud connection details, and set these in `.env`:
+
+```env
+GRAFANA_CLOUD_LOKI_URL=https://logs-prod-REGION.grafana.net/loki/api/v1/push
+GRAFANA_CLOUD_LOKI_USERNAME=123456
+GRAFANA_CLOUD_LOGS_TOKEN=your-logs-write-token
+GRAFANA_CLOUD_LOKI_DATASOURCE_UID=your-cloud-loki-datasource-uid
+```
+
+Add the logs overlay to the Cloud stack and install the diagnostic dashboard using the same Grafana service account settings as the account dashboard:
+
+```bash
+docker compose -f compose.yaml -f compose.grafana-cloud.yaml -f compose.grafana-cloud-logs.yaml up -d --build
+npm run monitoring:cloud:logs-dashboard
+```
+
+The Cloud metrics configuration remains usable without the logs overlay or Loki credentials. `npm run monitoring:cloud:logs-dashboard -- --dry-run` prints the dashboard payload without publishing it. Cloud log retention follows your stack's configured policy.
+
+For a custom Node.js deployment, run Alloy with `monitoring/alloy/logs.alloy`, mount the project's `diagnostics` directory at `/var/log/rewards`, and set `REWARDS_DEPLOYMENT`, `LOKI_URL`, `LOKI_USERNAME`, and `LOKI_TOKEN`. The last two may be empty for a local Loki instance with authentication disabled.
+
+The diagnostic outcome distinguishes a verified completed quota from an unknown-quota probe that stopped without credit (`quota-probe-no-credit`). Existing Rewards behavior is unchanged: normal runs can continue after unverified sign-in, and legacy activity summaries can still mark bounded probes confirmed. The diagnostic log makes both conditions explicit; it does not establish why Microsoft withheld credit.
+
 ## Troubleshooting
 
 | Symptom                                                 | What to check                                                                                                                                                                  |

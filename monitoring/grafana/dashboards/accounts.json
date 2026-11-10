@@ -9,6 +9,14 @@
     "schemaVersion": 41,
     "version": 2,
     "refresh": "30s",
+    "links": [
+        {
+            "title": "Search Diagnostics",
+            "type": "link",
+            "url": "/d/rewards-search-diagnostics",
+            "keepTime": true
+        }
+    ],
     "time": {
         "from": "now-7d",
         "to": "now"

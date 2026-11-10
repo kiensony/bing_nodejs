@@ -6,7 +6,7 @@ function required(sourceEnv, name) {
     return value
 }
 
-export function grafanaCloudSettings(sourceEnv = process.env) {
+function dashboardSettings(sourceEnv, datasourceKey) {
     const rawUrl = required(sourceEnv, 'GRAFANA_CLOUD_URL')
     let url
     try {
@@ -20,9 +20,17 @@ export function grafanaCloudSettings(sourceEnv = process.env) {
     return {
         url: url.toString().replace(/\/+$/, ''),
         token: required(sourceEnv, 'GRAFANA_CLOUD_SERVICE_ACCOUNT_TOKEN'),
-        datasourceUid: required(sourceEnv, 'GRAFANA_CLOUD_PROMETHEUS_DATASOURCE_UID'),
+        datasourceUid: required(sourceEnv, datasourceKey),
         deployment: envStrFrom(sourceEnv, 'GRAFANA_CLOUD_DEPLOYMENT') ?? 'rewards'
     }
+}
+
+export function grafanaCloudSettings(sourceEnv = process.env) {
+    return dashboardSettings(sourceEnv, 'GRAFANA_CLOUD_PROMETHEUS_DATASOURCE_UID')
+}
+
+export function grafanaCloudLogSettings(sourceEnv = process.env) {
+    return dashboardSettings(sourceEnv, 'GRAFANA_CLOUD_LOKI_DATASOURCE_UID')
 }
 
 export function cloudDashboard(source, { datasourceUid, deployment }) {
@@ -37,7 +45,7 @@ export function cloudDashboard(source, { datasourceUid, deployment }) {
     return dashboard
 }
 
-export async function installCloudDashboard({ settings, dashboard, request = fetch }) {
+export async function installCloudDashboard({ settings, dashboard, datasourceType = 'prometheus', request = fetch }) {
     const headers = { Authorization: `Bearer ${settings.token}`, 'Content-Type': 'application/json' }
     const send = async (path, options = {}) => {
         const response = await request(`${settings.url}${path}`, {
@@ -50,7 +58,10 @@ export async function installCloudDashboard({ settings, dashboard, request = fet
         return response.json()
     }
     const source = await send(`/api/datasources/uid/${encodeURIComponent(settings.datasourceUid)}`)
-    if (source.type !== 'prometheus') throw new Error('The selected Grafana Cloud data source must be Prometheus.')
+    if (source.type !== datasourceType)
+        throw new Error(
+            `The selected Grafana Cloud data source must be ${datasourceType === 'loki' ? 'Loki' : 'Prometheus'}.`
+        )
     return send('/api/dashboards/db', {
         method: 'POST',
         body: JSON.stringify({

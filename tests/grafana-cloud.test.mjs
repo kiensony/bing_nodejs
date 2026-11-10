@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import test from 'node:test'
-import { cloudDashboard, grafanaCloudSettings, installCloudDashboard } from '../scripts/lib/grafanaCloud.js'
+import {
+    cloudDashboard,
+    grafanaCloudSettings,
+    grafanaCloudLogSettings,
+    installCloudDashboard
+} from '../scripts/lib/grafanaCloud.js'
 
 const template = JSON.parse(fs.readFileSync(new URL('../monitoring/grafana/dashboards/accounts.json', import.meta.url)))
 const env = {
@@ -135,4 +140,40 @@ test('Cloud authentication and permission errors fail without exposing returned 
             error => error.message.includes(`HTTP ${status}`) && !error.message.includes('service-token')
         )
     }
+})
+
+test('search diagnostic dashboard provisions a Loki source without requiring Prometheus settings', async () => {
+    const dashboard = JSON.parse(
+        fs.readFileSync(new URL('../monitoring/grafana/dashboards/search-diagnostics.json', import.meta.url))
+    )
+    const settings = grafanaCloudLogSettings({
+        ...env,
+        GRAFANA_CLOUD_PROMETHEUS_DATASOURCE_UID: '',
+        GRAFANA_CLOUD_LOKI_DATASOURCE_UID: 'cloud-loki'
+    })
+    const result = cloudDashboard(dashboard, settings)
+    assert.equal(result.templating.list.find(variable => variable.name === 'datasource').current.value, 'cloud-loki')
+    assert.equal(result.templating.list.find(variable => variable.name === 'deployment').current.value, 'my-server')
+    assert.equal(result.panels.filter(panel => panel.type === 'logs').length, 1)
+    const calls = []
+    await installCloudDashboard({
+        settings,
+        dashboard,
+        datasourceType: 'loki',
+        request: async (_url, options) => {
+            calls.push(options)
+            return Response.json(calls.length === 1 ? { type: 'loki' } : { status: 'success' })
+        }
+    })
+    assert.equal(calls.length, 2)
+    assert.equal(JSON.parse(calls[1].body).dashboard.uid, 'rewards-search-diagnostics')
+    await assert.rejects(
+        installCloudDashboard({
+            settings,
+            dashboard,
+            datasourceType: 'loki',
+            request: async () => Response.json({ type: 'prometheus' })
+        }),
+        /must be Loki/
+    )
 })

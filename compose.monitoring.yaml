@@ -43,9 +43,38 @@ services:
             - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
         depends_on:
             - prometheus
+            - loki
+        security_opt:
+            - no-new-privileges:true
+
+    loki:
+        image: grafana/loki:3.5.7
+        restart: unless-stopped
+        command: ['-config.file=/etc/loki/config.yml']
+        volumes:
+            - ./monitoring/loki/config.yml:/etc/loki/config.yml:ro
+            - loki-data:/loki
+        security_opt:
+            - no-new-privileges:true
+
+    alloy-logs:
+        image: grafana/alloy:v1.21.3
+        restart: unless-stopped
+        command: ['run', '--storage.path=/var/lib/alloy/data', '/etc/alloy/logs.alloy']
+        environment:
+            REWARDS_DEPLOYMENT: '${REWARDS_DEPLOYMENT:-local}'
+            LOKI_URL: 'http://loki:3100/loki/api/v1/push'
+        volumes:
+            - ./monitoring/alloy/logs.alloy:/etc/alloy/logs.alloy:ro
+            - ./diagnostics:/var/log/rewards:ro
+            - alloy-logs-data:/var/lib/alloy/data
+        depends_on:
+            - loki
         security_opt:
             - no-new-privileges:true
 
 volumes:
     prometheus-data:
     grafana-data:
+    loki-data:
+    alloy-logs-data:
