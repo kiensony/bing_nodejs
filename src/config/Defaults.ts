@@ -3,7 +3,7 @@ import type { Config } from './Config'
 export const defaultConfig: Config = {
     sessionPath: 'sessions',
     headless: true,
-    clusters: 1,
+    clusters: 6,
     rewardsMode: 'browser',
     errorDiagnostics: false,
     ensureStreakProtection: true,
