@@ -43,18 +43,21 @@
         "runOnZeroPoints": false,
         "maxBonusSearches": 110,
         "parallelSearching": false,
-        "clusterSearch": true,
+        "clusterSearch": false,
         "useAccountLocale": true,
         "queryEngines": [
             "google",
-            "local",
             "wikipedia",
-            "rss.googleNews"
+            "wikirandom",
+            "reddit",
+            "hackernews",
+            "rss.googleNews",
+            "local"
         ],
         "searchResultVisitTime": "12sec",
         "searchDelay": {
-            "min": "12sec",
-            "max": "30sec"
+            "min": "18sec",
+            "max": "45sec"
         },
         "readDelay": {
             "min": "20s",

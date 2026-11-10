@@ -191,6 +191,7 @@ export class BrowserSearch extends BaseActivity {
             await createSearchPage()
 
             let nextMeasureAt = MEASURE_EVERY_SEARCHES
+            let nextBurstPauseAt = this.bot.utils.randomNumber(3, 6)
 
             while (!tracker.done() && stats.performed < tracker.maxSearches && stats.stagnant < tracker.stagnantLimit) {
                 this.bot.signal.throwIfAborted()
@@ -246,6 +247,22 @@ export class BrowserSearch extends BaseActivity {
                         `search ${stats.performed} done, next measure at ${nextMeasureAt} | query="${query}"`
                     )
                 }
+
+                const stopAfterMeasure =
+                    stats.performed >= tracker.maxSearches ||
+                    tracker.done() ||
+                    stats.stagnant >= tracker.stagnantLimit
+
+                if (!stopAfterMeasure && stats.performed >= nextBurstPauseAt) {
+                    const burstPauseMs = this.bot.utils.randomNumber(45000, 105000)
+                    nextBurstPauseAt = stats.performed + this.bot.utils.randomNumber(3, 6)
+                    this.bot.logger.info(
+                        isMobile,
+                        tracker.context,
+                        `Taking natural micro-batch breather for ${Math.round(burstPauseMs / 1000)}s after ${stats.performed} searches`
+                    )
+                    await this.bot.utils.wait(burstPauseMs)
+                }
             }
 
             await tracker.measure()
@@ -283,14 +300,21 @@ export class BrowserSearch extends BaseActivity {
         }
 
         page = await this.bing.submit(page, query, 'SEARCH-BING', isMobile, undefined, replaceCrashedPage)
-        await this.bot.utils.wait(2500)
+        await this.bot.utils.wait(this.bot.utils.randomDelay(1800, 4200))
 
-        if (!isBrowserPageCrashed(page) && this.bot.config.searchSettings.scrollRandomResults) {
-            await this.bot.utils.wait(1500)
+        const shouldScroll = this.bot.config.searchSettings.scrollRandomResults && Math.random() < 0.88
+        if (!isBrowserPageCrashed(page) && shouldScroll) {
+            await this.bot.utils.wait(this.bot.utils.randomDelay(900, 2600))
             await this.randomScroll(page, isMobile)
+            if (!isBrowserPageCrashed(page) && Math.random() < 0.35) {
+                await this.bot.utils.wait(this.bot.utils.randomDelay(700, 1800))
+                await this.randomScroll(page, isMobile)
+            }
         }
-        if (!isBrowserPageCrashed(page) && this.bot.config.searchSettings.clickRandomResults) {
-            await this.bot.utils.wait(1500)
+
+        const shouldClick = this.bot.config.searchSettings.clickRandomResults && Math.random() < 0.75
+        if (!isBrowserPageCrashed(page) && shouldClick) {
+            await this.bot.utils.wait(this.bot.utils.randomDelay(800, 2400))
             await this.clickRandomLink(page, isMobile)
         }
 
@@ -361,13 +385,21 @@ export class BrowserSearch extends BaseActivity {
                         timeout: Math.min(5000, browserTimeout(this.bot, 'optional'))
                     })
                     closeClick = clicked.close
-                    await this.bot.utils.wait(
-                        this.bot.utils.randomDelay(
-                            this.bot.config.searchSettings.searchResultVisitTime,
-                            this.bot.config.searchSettings.searchResultVisitTime
-                        ),
-                        visitSignal
+                    const baseVisitMs = this.bot.utils.parseDuration(this.bot.config.searchSettings.searchResultVisitTime)
+                    const totalVisitMs = this.bot.utils.randomNumber(
+                        Math.max(4000, Math.round(baseVisitMs * 0.75)),
+                        Math.max(8000, Math.round(baseVisitMs * 1.65))
                     )
+                    const firstPauseMs = Math.round(totalVisitMs * 0.45)
+                    await this.bot.utils.wait(firstPauseMs, visitSignal)
+                    if (!visitSignal.aborted && !clicked.page.isClosed() && !isBrowserPageCrashed(clicked.page)) {
+                        await humanScroll(
+                            clicked.page,
+                            { random: true },
+                            { timeout: Math.min(4000, browserTimeout(this.bot, 'optional')), signal: visitSignal }
+                        ).catch(() => undefined)
+                    }
+                    await this.bot.utils.wait(Math.max(1000, totalVisitMs - firstPauseMs), visitSignal)
                     return
                 } catch (error) {
                     this.bot.signal.throwIfAborted()
