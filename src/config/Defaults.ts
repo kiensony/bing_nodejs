@@ -2,16 +2,16 @@ import type { Config } from './Config'
 
 export const defaultConfig: Config = {
     sessionPath: 'sessions',
-    headless: false,
-    clusters: 1,
+    headless: true,
+    clusters: 6,
     rewardsMode: 'browser',
     errorDiagnostics: false,
     ensureStreakProtection: true,
-    autoClaimPunchcardRewards: false,
-    continueOnBotWarning: false,
+    autoClaimPunchcardRewards: true,
+    continueOnBotWarning: true,
     skipNonPointTasks: true,
-    accountDelay: { min: '1min', max: '3min' },
-    taskDelay: { min: '15sec', max: '30sec' },
+    accountDelay: { min: '30sec', max: '1min' },
+    taskDelay: { min: '12sec', max: '20sec' },
     workers: {
         doDailySet: true,
         doClaimBonusPoints: true,
@@ -20,18 +20,18 @@ export const defaultConfig: Config = {
         doAppPromotions: true,
         doDesktopSearch: true,
         doMobileSearch: true,
-        doBonusSearches: false,
+        doBonusSearches: true,
         doDailyCheckIn: true,
         doReadToEarn: true,
         doActivateSearchPerk: true,
-        doVisualSearch: false
+        doVisualSearch: true
     },
     activities: { urlReward: true, searchOnBing: true },
     searchOnBingLocalQueries: false,
     globalTimeout: '30sec',
     searchSettings: {
-        scrollRandomResults: false,
-        clickRandomResults: false,
+        scrollRandomResults: true,
+        clickRandomResults: true,
         runOnZeroPoints: false,
         maxBonusSearches: 110,
         maxSearchOnBingAttempts: 3,
@@ -39,11 +39,11 @@ export const defaultConfig: Config = {
         clusterSearch: true,
         useAccountLocale: true,
         queryEngines: ['google', 'local', 'wikipedia', 'rss.googleNews'],
-        searchResultVisitTime: '10sec',
-        searchDelay: { min: '30sec', max: '1min' },
-        readDelay: { min: '30sec', max: '1min' }
+        searchResultVisitTime: '12sec',
+        searchDelay: { min: '12sec', max: '30sec' },
+        readDelay: { min: '20s', max: '30sec' }
     },
-    experimental: { blockMedia: false, edgeBrowsing: false, browserSearchApiReport: false },
+    experimental: { blockMedia: false, edgeBrowsing: true, browserSearchApiReport: false },
     debugLogs: false,
     consoleLogFilter: {
         enabled: false,

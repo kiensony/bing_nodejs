@@ -37,6 +37,12 @@ if [ -d "$CONFIG_FILE" ]; then
     exit 1
 fi
 
+if [ -f "$SCRIPT_DIR/config.default.json" ]; then
+    mkdir -p "$(dirname "$CONFIG_FILE")"
+    cp -f "$SCRIPT_DIR/config.default.json" "$CONFIG_FILE"
+    docker_log entrypoint info "[entrypoint] Loaded config/config.json from bundled config.json."
+fi
+
 SYNC_ARGS=(--config "$CONFIG_FILE")
 if [ "${CONFIG_AUTO_SYNC:-false}" = "true" ]; then
     SYNC_ARGS+=(--patch)

@@ -18,17 +18,15 @@ fi
 # 2. Tao cac thu muc can thiet
 mkdir -p config diagnostics sessions
 
-# 3. Tu dong copy config.json vao thu muc config/ neu chua co
-if [ ! -f "config/config.json" ]; then
-    if [ -f "config.json" ]; then
-        echo "[1/3] Copy config.json vao thu muc config/config.json..."
-        cp config.json config/config.json
-    elif [ -f "config.example.json" ]; then
-        echo "[1/3] Tao config/config.json tu config.example.json..."
-        cp config.example.json config/config.json
-    fi
+# 3. Tu dong dong bo config.json vao thu muc config/
+if [ -f "config.json" ]; then
+    echo "[1/3] Dong bo config.json vao thu muc config/config.json..."
+    cp -f config.json config/config.json
+elif [ ! -f "config/config.json" ] && [ -f "config.example.json" ]; then
+    echo "[1/3] Tao config/config.json tu config.example.json..."
+    cp -f config.example.json config/config.json
 else
-    echo "[1/3] File config/config.json da ton tai, giu nguyen!"
+    echo "[1/3] File config/config.json: OK!"
 fi
 
 # 4. Kiem tra file .env

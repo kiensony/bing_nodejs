@@ -32,7 +32,8 @@ COPY --from=builder /usr/src/microsoft-rewards-script/node_modules ./node_module
 RUN ./node_modules/.bin/patchright install --with-deps chromium \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
-# The entrypoint prepares config/config.json from built-in defaults in the persisted config volume.
+# The entrypoint prepares config/config.json from bundled config.json or built-in defaults in the persisted config volume.
+COPY --chmod=644 config.json ./config.default.json
 COPY --chmod=755 scripts/docker/run_daily.sh ./scripts/docker/run_daily.sh
 COPY --chmod=755 scripts/docker/healthcheck.sh ./scripts/docker/healthcheck.sh
 COPY scripts/lib/ ./scripts/lib/

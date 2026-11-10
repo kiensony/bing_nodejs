@@ -31,17 +31,13 @@ if errorlevel 1 (
 )
 echo.
 
-:: 3. Kiem tra thu muc dist (neu chua build thi build)
-if not exist "dist\" (
-    echo [3/3] Phat hien chua build source, dang build...
-    call npm run build
-    if errorlevel 1 (
-        echo [LOI] Build source that bai!
-        pause
-        exit /b 1
-    )
-) else (
-    echo [3/3] Ban build dist: OK!
+:: 3. Luon build lai source de cap nhat code moi (sau khi git pull)
+echo [3/3] Dang build source...
+call npm run build
+if errorlevel 1 (
+    echo [LOI] Build source that bai!
+    pause
+    exit /b 1
 )
 echo.
 

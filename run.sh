@@ -56,13 +56,9 @@ echo "[2/3] Kiem tra trinh duyet Chromium va dependencies he thong..."
 npx patchright install --with-deps chromium
 echo ""
 
-# 4. Kiem tra ban build dist
-if [ ! -d "dist" ]; then
-    echo "[3/3] Phat hien chua build source, dang build..."
-    npm run build
-else
-    echo "[3/3] Ban build dist: OK!"
-fi
+# 4. Luon build lai source de cap nhat code moi (sau khi git pull)
+echo "[3/3] Dang build source..."
+npm run build
 echo ""
 
 echo "========================================================"
